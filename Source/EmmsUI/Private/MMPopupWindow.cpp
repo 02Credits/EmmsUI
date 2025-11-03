@@ -30,6 +30,7 @@ void UMMPopupWindow::Spawn()
 				OnWindowClosed();
 			}
 
+			World = nullptr;
 			StrongSelf.Reset();
 			SlateWindow.Reset();
 		}
