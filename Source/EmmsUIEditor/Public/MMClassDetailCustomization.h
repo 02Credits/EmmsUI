@@ -66,6 +66,11 @@ class UMMClassDetailCustomization : public UObject, public FTickableGameObject
 	GENERATED_BODY()
 public:
 
+	UMMClassDetailCustomization(const FObjectInitializer& Initializer)
+		: Super(Initializer)
+		, FTickableGameObject(IsTemplate() ? ETickableTickType::Never : ETickableTickType::NewObject)
+	{}
+
 	virtual UWorld* GetWorld() const override;
 
 	UFUNCTION(BlueprintImplementableEvent)
@@ -147,7 +152,19 @@ public:
 	void AddExternalObject(FName CategoryName, UObject* Object, bool bHideRootObjectNode = true);
 
 	UFUNCTION(ScriptCallable)
+	void AddExternalObjects(FName CategoryName, const TArray<UObject*>& Objects, bool bHideRootObjectNode = true);
+
+	UFUNCTION(ScriptCallable)
 	void AddExternalObjectProperty(FName CategoryName, UObject* Object, FName PropertyName);
+
+	UFUNCTION(ScriptCallable)
+	void AddExternalObjectsProperty(FName CategoryName, const TArray<UObject*>& Objects, FName PropertyName);
+
+	/*
+	 * If the object being customized is an actor, add a single property from inside one of its components.
+	 */
+	UFUNCTION(ScriptCallable)
+	void AddComponentProperty(FName CategoryName, FName ComponentName, FName PropertyName);
 
 	UFUNCTION(ScriptCallable)
 	void ForceRefresh();

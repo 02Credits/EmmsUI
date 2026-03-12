@@ -21,6 +21,7 @@ public:
 	static FEmmsAttributeSpecification* Attr_UTextBlock_ColorAndOpacity;
 	static FEmmsAttributeSpecification* Attr_UTextBlock_AutoWrapText;
 	static FMulticastDelegateProperty* Event_UButton_OnClicked;
+	static FEmmsAttributeSpecification* Attr_UButton_WidgetStyle;
 	static FEmmsAttributeSpecification* Attr_USpacer_Size;
 	static FEmmsAttributeSpecification* Attr_USizeBox_WidthOverride;
 	static FEmmsAttributeSpecification* Attr_USizeBox_HeightOverride;
@@ -31,6 +32,9 @@ public:
 	static FEmmsAttributeSpecification* Attr_USizeBox_MinAspectRatio;
 	static FEmmsAttributeSpecification* Attr_USizeBox_MaxAspectRatio;
 	static FEmmsAttributeSpecification* Attr_UEditableTextBox_Text;
+	static FEmmsAttributeSpecification* Attr_UEditableText_Text;
+	static FEmmsAttributeSpecification* Attr_UEditableText_HintText;
+	static FEmmsAttributeSpecification* Attr_UEditableText_WidgetStyle;
 	static FEmmsAttributeSpecification* Attr_UBorder_Background;
 	static FDelegateProperty* Event_UBorder_OnMouseButtonDownEvent;
 	static FDelegateProperty* Event_UBorder_OnMouseDoubleClickEvent;
@@ -40,6 +44,8 @@ public:
 	static FEmmsAttributeSpecification* Attr_USpinBox_Value;
 	static FEmmsAttributeSpecification* Attr_USpinBox_MinValue;
 	static FEmmsAttributeSpecification* Attr_USpinBox_MaxValue;
+	static FEmmsAttributeSpecification* Attr_USpinBox_MinSliderValue;
+	static FEmmsAttributeSpecification* Attr_USpinBox_MaxSliderValue;
 	static FEmmsAttributeSpecification* Attr_USpinBox_Delta;
 	static FEmmsAttributeSpecification* Attr_USlider_Value;
 	static FEmmsAttributeSpecification* Attr_USlider_MinValue;
@@ -67,13 +73,14 @@ public:
 	static FEmmsWidgetHandle Button(const FString& LabelText);
 	static FEmmsWidgetHandle Button_IconBrush(const FString& LabelText, const FSlateBrush& IconBrush, const FVector2D& IconSize, const FLinearColor& IconColor);
 	static FEmmsWidgetHandle Button_IconStyleBrush(const FString& LabelText, const FName& IconStyleBrush, const FVector2D& IconSize, const FLinearColor& IconColor);
+	static void SetButtonStyleColor(FEmmsWidgetHandle* Handle, const FLinearColor& StyleColor);
 	static bool Button_ImplBoolConv(FEmmsWidgetHandle* Widget);
 	static void SetButtonInnerPadding(FEmmsWidgetHandle* Widget, float Horizontal, float Vertical);
 
 	static FEmmsWidgetHandle Text(const FString& Text, float FontSize = 0, const FLinearColor& Color = FLinearColor::White, bool bWrap = false, bool bBold = false);
-	static void SetTextFontSize(FEmmsWidgetHandle Widget, float FontSize);
-	static void SetTextFontFace(FEmmsWidgetHandle Widget, FName FontFace);
-	static void SetTextBold(FEmmsWidgetHandle Widget, bool bBold);
+	static void SetTextFontSize(FEmmsWidgetHandle* Widget, float FontSize);
+	static void SetTextFontFace(FEmmsWidgetHandle* Widget, FName FontFace);
+	static void SetTextBold(FEmmsWidgetHandle* Widget, bool bBold);
 
 	static FEmmsWidgetHandle Spacer_Uniform(float Size);
 	static FEmmsWidgetHandle Spacer(float Width, float Height);
@@ -95,6 +102,7 @@ public:
 	static void SetToolTipText(FEmmsWidgetHandle* Widget, const FString& Text);
 
 	static FEmmsWidgetHandle EditableTextBox(FString& Value);
+	static FEmmsWidgetHandle EditableText(FString& Value, const FString& HintText, float FontSize = 0, const FLinearColor& Color = FLinearColor::White, bool bBold = false);
 	static FEmmsWidgetHandle SpinBox(double& Value);
 	static FEmmsWidgetHandle SpinBox_Constrained(double& Value, float MinValue, float MaxValue, float Delta = 0);
 	static FEmmsWidgetHandle Slider(double& Value, float MinValue = 0, float MaxValue = 1);

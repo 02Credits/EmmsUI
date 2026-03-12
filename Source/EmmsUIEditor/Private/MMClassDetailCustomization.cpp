@@ -7,6 +7,7 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/SBoxPanel.h"
 #include "Styling/SlateBrush.h"
+#include "UObject/Package.h"
 
 IDetailCategoryBuilder& UMMClassDetailCustomization::GetCategory(FName CategoryName)
 {
@@ -350,6 +351,22 @@ void UMMClassDetailCustomization::AddExternalObject(FName CategoryName, UObject*
 	);
 }
 
+void UMMClassDetailCustomization::AddExternalObjects(FName CategoryName, const TArray<UObject*>& Objects, bool bHideRootObjectNode)
+{
+	if (ActiveDetailBuilder == nullptr)
+		return;
+
+	FAddPropertyParams Params;
+	Params.HideRootObjectNode(bHideRootObjectNode);
+
+	IDetailCategoryBuilder& Category = GetCategory(CategoryName);
+	Category.AddExternalObjects(
+		Objects,
+		EPropertyLocation::Default,
+		Params
+	);
+}
+
 void UMMClassDetailCustomization::AddExternalObjectProperty(FName CategoryName, UObject* Object, FName PropertyName)
 {
 	if (ActiveDetailBuilder == nullptr)
@@ -365,6 +382,47 @@ void UMMClassDetailCustomization::AddExternalObjectProperty(FName CategoryName, 
 		EPropertyLocation::Default,
 		Params
 	);
+}
+
+void UMMClassDetailCustomization::AddExternalObjectsProperty(FName CategoryName, const TArray<UObject*>& Objects, FName PropertyName)
+{
+	if (ActiveDetailBuilder == nullptr)
+		return;
+
+	FAddPropertyParams Params;
+	Params.ForceShowProperty();
+
+	IDetailCategoryBuilder& Category = GetCategory(CategoryName);
+	Category.AddExternalObjectProperty(
+		Objects,
+		PropertyName,
+		EPropertyLocation::Default,
+		Params
+	);
+}
+
+void UMMClassDetailCustomization::AddComponentProperty(FName CategoryName, FName ComponentName, FName PropertyName)
+{
+	if (ActiveDetailBuilder == nullptr)
+		return;
+
+	TArray<UObject*> EditComponents;
+	for (UObject* ActiveObject : ObjectsBeingCustomized)
+	{
+		AActor* Actor = Cast<AActor>(ActiveObject);
+		if (!IsValid(Actor))
+			continue;
+
+		for (UActorComponent* Component : Actor->GetComponents())
+		{
+			if (IsValid(Component) && Component->GetFName() == ComponentName)
+			{
+				EditComponents.Add(Component);
+			}
+		}
+	}
+
+	AddExternalObjectsProperty(CategoryName, EditComponents, PropertyName);
 }
 
 void UMMClassDetailCustomization::ForceRefresh()
@@ -415,6 +473,12 @@ void FMMDummyDetailCustomization::OnWorldCleanup(UWorld* World, bool bSessionEnd
 		&& (!IsValid(Customization->GetCustomizedObject()) || !Customization->GetCustomizedObject()->IsAsset())
 	)
 	{
+		if (Customization->GetWorld() != World)
+		{
+			// Do not kill the customization if the world does not match, (e.g., in case of a thumbnail widget world being destroyed)
+			return;
+		}
+		
 		Customization->LastDetailBuilder = nullptr;
 		Customization->ObjectsBeingCustomized.Reset();
 		Customization->MarkAsGarbage();
@@ -424,13 +488,16 @@ void FMMDummyDetailCustomization::OnWorldCleanup(UWorld* World, bool bSessionEnd
 
 FMMDummyDetailCustomization::~FMMDummyDetailCustomization()
 {
-	FWorldDelegates::LevelRemovedFromWorld.RemoveAll(this);
+	FWorldDelegates::OnWorldCleanup.RemoveAll(this);
 
 	if (Customization != nullptr)
 	{
 		Customization->LastDetailBuilder = nullptr;
-		Customization->DestroyDetails();
-		Customization->MarkAsGarbage();
+		if (!IsEngineExitRequested())
+		{
+			Customization->DestroyDetails();
+			Customization->MarkAsGarbage();
+		}
 	}
 }
 

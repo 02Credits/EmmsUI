@@ -25,10 +25,12 @@
 #include "EmmsDefaultWidgetStyles.h"
 #include "Styling/AppStyle.h"
 #include "InputCoreTypes.h"
+#include "UObject/Package.h"
 
 #include "AngelscriptBinds.h"
 #include "AngelscriptDocs.h"
 #include "AngelscriptManager.h"
+#include "Components/EditableText.h"
 
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UWidget_RenderTransform;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UWidget_ToolTipText;
@@ -37,6 +39,7 @@ FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UTextBlock_Font;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UTextBlock_ColorAndOpacity;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UTextBlock_AutoWrapText;
 FMulticastDelegateProperty* UEmmsWidgetHelpers::Event_UButton_OnClicked;
+FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UButton_WidgetStyle;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USpacer_Size;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USizeBox_WidthOverride;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USizeBox_HeightOverride;
@@ -47,6 +50,9 @@ FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USizeBox_MaxDesiredHeight;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USizeBox_MinAspectRatio;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USizeBox_MaxAspectRatio;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UEditableTextBox_Text;
+FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UEditableText_Text;
+FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UEditableText_HintText;
+FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UEditableText_WidgetStyle;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UBorder_Background;
 FDelegateProperty* UEmmsWidgetHelpers::Event_UBorder_OnMouseButtonDownEvent;
 FDelegateProperty* UEmmsWidgetHelpers::Event_UBorder_OnMouseDoubleClickEvent;
@@ -56,6 +62,8 @@ FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_UListView_EntryWidgetClass
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USpinBox_Value;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USpinBox_MinValue;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USpinBox_MaxValue;
+FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USpinBox_MinSliderValue;
+FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USpinBox_MaxSliderValue;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USpinBox_Delta;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USlider_Value;
 FEmmsAttributeSpecification* UEmmsWidgetHelpers::Attr_USlider_MinValue;
@@ -162,9 +170,9 @@ FEmmsWidgetHandle UEmmsWidgetHelpers::Text(const FString& Text, float FontSize, 
 	return TextBlock;
 }
 
-void UEmmsWidgetHelpers::SetTextFontSize(FEmmsWidgetHandle Widget, float FontSize)
+void UEmmsWidgetHelpers::SetTextFontSize(FEmmsWidgetHandle* Widget, float FontSize)
 {
-	if (FSlateFontInfo* FontValue = GetPartialPendingAttribute<FSlateFontInfo>(Widget, Attr_UTextBlock_Font))
+	if (FSlateFontInfo* FontValue = GetPartialPendingAttribute<FSlateFontInfo>(*Widget, Attr_UTextBlock_Font))
 	{
 		if (!FontValue->HasValidFont())
 			*FontValue = UEmmsDefaultWidgetStyles::GetDefaultFont();
@@ -172,9 +180,9 @@ void UEmmsWidgetHelpers::SetTextFontSize(FEmmsWidgetHandle Widget, float FontSiz
 	}
 }
 
-void UEmmsWidgetHelpers::SetTextFontFace(FEmmsWidgetHandle Widget, FName FontFace)
+void UEmmsWidgetHelpers::SetTextFontFace(FEmmsWidgetHandle* Widget, FName FontFace)
 {
-	if (FSlateFontInfo* FontValue = GetPartialPendingAttribute<FSlateFontInfo>(Widget, Attr_UTextBlock_Font))
+	if (FSlateFontInfo* FontValue = GetPartialPendingAttribute<FSlateFontInfo>(*Widget, Attr_UTextBlock_Font))
 	{
 		if (!FontValue->HasValidFont())
 			*FontValue = UEmmsDefaultWidgetStyles::GetDefaultFont();
@@ -182,9 +190,9 @@ void UEmmsWidgetHelpers::SetTextFontFace(FEmmsWidgetHandle Widget, FName FontFac
 	}
 }
 
-void UEmmsWidgetHelpers::SetTextBold(FEmmsWidgetHandle Widget, bool bBold)
+void UEmmsWidgetHelpers::SetTextBold(FEmmsWidgetHandle* Widget, bool bBold)
 {
-	if (FSlateFontInfo* FontValue = GetPartialPendingAttribute<FSlateFontInfo>(Widget, Attr_UTextBlock_Font))
+	if (FSlateFontInfo* FontValue = GetPartialPendingAttribute<FSlateFontInfo>(*Widget, Attr_UTextBlock_Font))
 	{
 		if (!FontValue->HasValidFont())
 			*FontValue = UEmmsDefaultWidgetStyles::GetDefaultFont();
@@ -205,6 +213,20 @@ bool UEmmsWidgetHelpers::Button_ImplBoolConv(FEmmsWidgetHandle* Widget)
 	);
 
 	return EventListener->ConsumeTriggered();
+}
+
+void UEmmsWidgetHelpers::SetButtonStyleColor(FEmmsWidgetHandle* Widget, const FLinearColor& StyleColor)
+{
+	if (Widget->Element == nullptr)
+		return;
+
+	if (FButtonStyle* Value = GetPartialPendingAttribute<FButtonStyle>(*Widget, Attr_UButton_WidgetStyle))
+	{
+		*Value = UEmmsDefaultWidgetStyles::GetDefaultButtonStyle();
+		Value->Normal.TintColor = StyleColor;
+		Value->Hovered.TintColor = StyleColor;
+		Value->Pressed.TintColor = StyleColor;
+	}
 }
 
 void UEmmsWidgetHelpers::SetButtonInnerPadding(FEmmsWidgetHandle* Widget, float Horizontal, float Vertical)
@@ -382,6 +404,45 @@ FEmmsWidgetHandle UEmmsWidgetHelpers::EditableTextBox(FString& OutTextValue)
 	if (!AttributeState.CurrentValue.IsEmpty() && ((FText*)AttributeState.CurrentValue.GetDataPtr())->EqualTo(NewValue))
 		OutTextValue = CastChecked<UEditableTextBox>(Widget.Element->UMGWidget)->GetText().ToString();
 	AttributeState.SetPendingValue(Attr_UEditableTextBox_Text, &NewValue);
+	
+	return Widget;
+}
+
+FEmmsWidgetHandle UEmmsWidgetHelpers::EditableText(FString& OutTextValue, const FString& HintText, float FontSize, const FLinearColor& Color, bool bBold)
+{
+	FEmmsWidgetHandle Widget = UEmmsStatics::AddWidget(UEditableText::StaticClass());
+	if (Widget.Element == nullptr)
+		return Widget;
+
+	auto& AttributeState = Widget.Element->Attributes.FindOrAdd(Attr_UEditableText_Text);
+
+	FText NewValue = FText::FromString(OutTextValue);
+	if (!AttributeState.CurrentValue.IsEmpty() && ((FText*)AttributeState.CurrentValue.GetDataPtr())->EqualTo(NewValue))
+		OutTextValue = CastChecked<UEditableText>(Widget.Element->UMGWidget)->GetText().ToString();
+	AttributeState.SetPendingValue(Attr_UEditableText_Text, &NewValue);
+
+	if (FText* Value = GetPartialPendingAttribute<FText>(Widget, Attr_UEditableText_HintText))
+	{
+		*Value = FText::FromString(HintText);
+	}
+	
+	if (FontSize != 0 || bBold || Color != FLinearColor::White)
+	{
+		if (FEditableTextStyle* Value = GetPartialPendingAttribute<FEditableTextStyle>(Widget, Attr_UEditableText_WidgetStyle))
+		{
+			*Value = UEmmsDefaultWidgetStyles::GetDefaultEditableTextStyle();
+			FSlateFontInfo FontValue = UEmmsDefaultWidgetStyles::GetDefaultFont();
+			if (FontSize != 0)
+				FontValue.Size = FontSize;
+			if (bBold)
+				FontValue.TypefaceFontName = NAME_Typeface_Bold;
+			if (Color != FLinearColor::White)
+				Value->ColorAndOpacity = Color;
+			
+			Value->Font = FontValue;
+		}
+	}
+
 
 	return Widget;
 }
@@ -400,19 +461,34 @@ FEmmsWidgetHandle UEmmsWidgetHelpers::SpinBox(double& OutValue)
 		AttributeState.SetPendingValue(Attr_USpinBox_Value, &NewValue);
 	}
 
+	// Sort the value attribute last in the list, so it doesn't get clamped by old Min/Max values
+	Widget.Element->Attributes.KeySort([](const FEmmsAttributeSpecification& A, const FEmmsAttributeSpecification& B) -> bool
+	{
+		if (&A == Attr_USpinBox_Value)
+			return false;
+		else if (&B == Attr_USpinBox_Value)
+			return true;
+		else
+			return &A < &B;
+	});
+
 	return Widget;
 }
 
 FEmmsWidgetHandle UEmmsWidgetHelpers::SpinBox_Constrained(double& OutValue, float MinValue, float MaxValue, float Delta)
 {
-	FEmmsWidgetHandle Widget = SpinBox(OutValue);
+	FEmmsWidgetHandle Widget = UEmmsStatics::AddWidget(USpinBox::StaticClass());
 	if (Widget.Element == nullptr)
 		return Widget;
 
 	if (float* Value = GetPartialPendingAttribute<float>(Widget, Attr_USpinBox_MinValue))
 		*Value = MinValue;
-
+	if (float* Value = GetPartialPendingAttribute<float>(Widget, Attr_USpinBox_MinSliderValue))
+		*Value = MinValue;
+	
 	if (float* Value = GetPartialPendingAttribute<float>(Widget, Attr_USpinBox_MaxValue))
+		*Value = MaxValue;
+	if (float* Value = GetPartialPendingAttribute<float>(Widget, Attr_USpinBox_MaxSliderValue))
 		*Value = MaxValue;
 
 	if (Delta != 0)
@@ -420,6 +496,25 @@ FEmmsWidgetHandle UEmmsWidgetHelpers::SpinBox_Constrained(double& OutValue, floa
 		if (float* Value = GetPartialPendingAttribute<float>(Widget, Attr_USpinBox_Delta))
 			*Value = Delta;
 	}
+
+	{
+		float NewValue = (float)OutValue;
+		auto& AttributeState = Widget.Element->Attributes.FindOrAdd(Attr_USpinBox_Value);
+		if (!AttributeState.CurrentValue.IsEmpty() && *(float*)AttributeState.CurrentValue.GetDataPtr() == NewValue)
+			OutValue = (double)CastChecked<USpinBox>(Widget.Element->UMGWidget)->GetValue();
+		AttributeState.SetPendingValue(Attr_USpinBox_Value, &NewValue);
+	}
+
+	// Sort the value attribute last in the list, so it doesn't get clamped by old Min/Max values
+	Widget.Element->Attributes.KeySort([](const FEmmsAttributeSpecification& A, const FEmmsAttributeSpecification& B) -> bool
+	{
+		if (&A == Attr_USpinBox_Value)
+			return false;
+		else if (&B == Attr_USpinBox_Value)
+			return true;
+		else
+			return &A < &B;
+	});
 
 	return Widget;
 }
@@ -1164,11 +1259,21 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_EmmsWidgetHelpers((int32)FAnge
 		FAngelscriptBinds::BindGlobalFunction("mm<UEditableTextBox> EditableTextBox(FString&out OutValue)", &UEmmsWidgetHelpers::EditableTextBox);
 		SCRIPT_BIND_DOCUMENTATION("Add an editable text box widget. The out string value will be set to whatever the user has entered");
 
+		UEmmsWidgetHelpers::Attr_UEditableText_Text = GetWidgetAttrSpec("Text", UEditableText::StaticClass());
+		UEmmsWidgetHelpers::Attr_UEditableText_HintText = GetWidgetAttrSpec("HintText", UEditableText::StaticClass());
+		UEmmsWidgetHelpers::Attr_UEditableText_WidgetStyle = GetWidgetAttrSpec("WidgetStyle", UEditableText::StaticClass());
+		FAngelscriptBinds::BindGlobalFunction("mm<UEditableText> EditableText(FString&out OutValue, const FString& HintText, float32 FontSize = 0, const FLinearColor& Color = FLinearColor::White, bool bBold = false)", &UEmmsWidgetHelpers::EditableText);
+		SCRIPT_BIND_DOCUMENTATION("Add an editable text box widget. The out string value will be set to whatever the user has entered");
+		
 		UEmmsWidgetHelpers::Attr_USpinBox_Value = GetWidgetAttrSpec("Value", USpinBox::StaticClass());
 		UEmmsWidgetHelpers::Attr_USpinBox_MinValue = GetWidgetAttrSpec("MinValue", USpinBox::StaticClass());
 		UEmmsWidgetHelpers::Attr_USpinBox_MinValue->ResetToDefaultFunction = [](FEmmsAttributeSpecification*, void* Container) { ((USpinBox*)Container)->ClearMinValue(); };
 		UEmmsWidgetHelpers::Attr_USpinBox_MaxValue = GetWidgetAttrSpec("MaxValue", USpinBox::StaticClass());
 		UEmmsWidgetHelpers::Attr_USpinBox_MaxValue->ResetToDefaultFunction = [](FEmmsAttributeSpecification*, void* Container) { ((USpinBox*)Container)->ClearMaxValue(); };
+		UEmmsWidgetHelpers::Attr_USpinBox_MinSliderValue = GetWidgetAttrSpec("MinSliderValue", USpinBox::StaticClass());
+		UEmmsWidgetHelpers::Attr_USpinBox_MinSliderValue->ResetToDefaultFunction = [](FEmmsAttributeSpecification*, void* Container) { ((USpinBox*)Container)->ClearMinSliderValue(); };
+		UEmmsWidgetHelpers::Attr_USpinBox_MaxSliderValue = GetWidgetAttrSpec("MaxSliderValue", USpinBox::StaticClass());
+		UEmmsWidgetHelpers::Attr_USpinBox_MaxSliderValue->ResetToDefaultFunction = [](FEmmsAttributeSpecification*, void* Container) { ((USpinBox*)Container)->ClearMaxSliderValue(); };
 		UEmmsWidgetHelpers::Attr_USpinBox_Delta = GetWidgetAttrSpec("Delta", USpinBox::StaticClass());
 		FAngelscriptBinds::BindGlobalFunction("mm<USpinBox> SpinBox(float64&out OutValue)", &UEmmsWidgetHelpers::SpinBox);
 		SCRIPT_BIND_DOCUMENTATION("Add an editable spinbox widget. The out float value will be set to whatever the user has entered");
@@ -1258,8 +1363,10 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_EmmsWidgetHelpers((int32)FAnge
 
 	{
 		auto mmUButton_ = FAngelscriptBinds::ExistingClass("mm<UButton>");
+		UEmmsWidgetHelpers::Attr_UButton_WidgetStyle = GetWidgetAttrSpec("WidgetStyle", UButton::StaticClass());
 		UEmmsWidgetHelpers::Event_UButton_OnClicked = GetWidgetEvent("OnClicked", UButton::StaticClass());
 		mmUButton_.Method("bool opImplConv() const", &UEmmsWidgetHelpers::Button_ImplBoolConv);
+		mmUButton_.Method("void SetButtonStyleColor(const FLinearColor& StyleColor) const", &UEmmsWidgetHelpers::SetButtonStyleColor);
 		mmUButton_.Method("void SetInnerPadding(float32 Horizontal, float32 Vertical) const", &UEmmsWidgetHelpers::SetButtonInnerPadding);
 		SCRIPT_BIND_DOCUMENTATION("Set the padding of the label widget inside the button");
 	}

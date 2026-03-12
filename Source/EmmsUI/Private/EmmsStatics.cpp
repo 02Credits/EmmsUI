@@ -9,6 +9,7 @@
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
+#include "UObject/Package.h"
 
 #include "StartAngelscriptHeaders.h"
 #include "as_context.h"
@@ -419,6 +420,11 @@ void UEmmsStatics::EndWidget()
 
 FEmmsWidgetHandle UEmmsStatics::AddWidget(const TSubclassOf<UWidget>& WidgetType)
 {
+	if (WidgetType == nullptr)
+	{
+		return FEmmsWidgetHandle{nullptr, nullptr};
+	}
+
 	if (ImplicitHierarchy.Num() == 0)
 	{
 		FAngelscriptManager::Throw("No root is active to add widgets to");
